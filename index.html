@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hábitos">
+    <link rel="apple-touch-icon" href="icon.png"> <link rel="manifest" href="manifest.json">
+    
+    <title>Tracker</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; background: #121212; color: #fff; text-align: center; }
+        .habit-btn { background: #333; color: white; border: none; padding: 20px; font-size: 24px; border-radius: 12px; width: 100%; margin-bottom: 30px; cursor: pointer; }
+        .habit-btn.done { background: #34C759; } /* Verde iOS */
+        .grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .day { width: 24px; height: 24px; border-radius: 4px; background: #333; }
+        .day.completed { background: #34C759; }
+    </style>
+</head>
+<body>
+
+    <h2>Hábito Diario</h2>
+    <button id="todayBtn" class="habit-btn" onclick="toggleToday()">Marcar Hoy</button>
+
+    <h3>Últimos 30 días</h3>
+    <div id="grid" class="grid"></div>
+
+    <script>
+        const STORAGE_KEY = 'habit_tracker_data';
+        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        
+        // Obtener fecha local en formato YYYY-MM-DD
+        const getTodayStr = () => {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+        };
+
+        const today = getTodayStr();
+
+        function render() {
+            // Actualizar botón de hoy
+            const btn = document.getElementById('todayBtn');
+            if (data[today]) {
+                btn.classList.add('done');
+                btn.innerText = 'Completado ✓';
+            } else {
+                btn.classList.remove('done');
+                btn.innerText = 'Marcar Hoy';
+            }
+
+            // Generar cuadritos (últimos 30 días)
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            for (let i = 29; i >= 0; i--) {
+                let d = new Date();
+                d.setDate(d.getDate() - i);
+                const tzoffset = d.getTimezoneOffset() * 60000;
+                const dateStr = (new Date(d.getTime() - tzoffset)).toISOString().slice(0, 10);
+                
+                const square = document.createElement('div');
+                square.className = 'day' + (data[dateStr] ? ' completed' : '');
+                grid.appendChild(square);
+            }
+        }
+
+        function toggleToday() {
+            data[today] = !data[today];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            render();
+        }
+
+        // Render inicial
+        render();
+    </script>
+</body>
+</html>
