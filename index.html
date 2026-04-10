@@ -39,7 +39,7 @@
         .heatmap-months { position: relative; height: 20px; margin-left: 20px; font-size: 12px; color: var(--gray); text-transform: capitalize; }
         .heatmap-month-label { position: absolute; }
         .heatmap-body { display: flex; gap: 8px; }
-        .heatmap-y-axis { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--gray); text-align: right; }
+        .heatmap-y-axis { display: flex; flex-direction: column; gap: 5px; font-size: 10px; color: var(--gray); text-align: right; }
         .heatmap-y-axis div { height: 16px; line-height: 16px; width: 12px; }
         .heatmap-grid { display: flex; gap: 4px; }
         .heatmap-col { display: flex; flex-direction: column; gap: 4px; position: relative; }
@@ -79,7 +79,7 @@
         <div class="filters">
             <select id="habitSelect" onchange="renderDashboard()"></select>
             <select id="viewType" onchange="toggleDashboardLayout()">
-                <option value="heatmap">Últimas 14 Semanas</option>
+                <option value="heatmap">Últimas 19 Semanas</option>
                 <option value="month">Mensual (Calendario)</option>
             </select>
         </div>
@@ -257,11 +257,11 @@
                 // Buscar el lunes de hace 14 semanas
                 const daysToMonday = (localNow.getDay() + 6) % 7;
                 const startMonday = new Date(localNow);
-                startMonday.setDate(localNow.getDate() - daysToMonday - (13 * 7));
+                startMonday.setDate(localNow.getDate() - daysToMonday - (18 * 7));
 
                 const todayStr = localNow.toISOString().slice(0, 10);
 
-                for (let w = 0; w < 14; w++) {
+                for (let w = 0; w < 19; w++) {
                     const col = document.createElement('div');
                     let isNewMonth = false;
                     let monthName = '';
