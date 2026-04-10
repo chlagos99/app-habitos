@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hábitos">
     <link rel="manifest" href="manifest.json">
-    <title>Tracker V3 - Cloud</title>
+    <title>Tracker V4 - Heatmap</title>
     <style>
         :root { --bg: #121212; --surface: #1e1e1e; --primary: #34C759; --text: #fff; --gray: #888; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 80px; }
@@ -26,11 +26,19 @@
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-secondary { background: #333; width: 100%; margin-top: 20px; }
         
-        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        select { flex: 1; padding: 12px; border-radius: 8px; background: var(--surface); color: white; border: 1px solid #333; font-size: 16px; min-width: 100px;}
-        .grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+        .filters { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        select { flex: 1; padding: 12px; border-radius: 8px; background: var(--surface); color: white; border: 1px solid #333; font-size: 16px; min-width: 100px; }
+        
+        /* Grid Mensual Clásico */
+        .grid-month { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .day-square { width: calc(100% / 7 - 8px); aspect-ratio: 1; border-radius: 6px; background: #333; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; }
         .day-square.active { background: var(--primary); color: #fff; font-weight: bold; }
+        
+        /* Grid Heatmap (14 semanas) */
+        .grid-heatmap { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; gap: 4px; overflow-x: auto; padding-bottom: 10px; margin-top: 10px; }
+        .heatmap-square { width: 16px; height: 16px; border-radius: 4px; background: #333; }
+        .heatmap-square.active { background: var(--primary); }
+        
         #loader { text-align: center; color: var(--gray); margin-top: 20px; }
     </style>
 </head>
@@ -56,11 +64,18 @@
         
         <div class="filters">
             <select id="habitSelect" onchange="renderDashboard()"></select>
+            <select id="viewType" onchange="toggleDashboardLayout()">
+                <option value="heatmap">Últimas 14 Semanas</option>
+                <option value="month">Mensual (Calendario)</option>
+            </select>
+        </div>
+
+        <div class="filters hidden" id="monthFilters">
             <select id="monthSelect" onchange="renderDashboard()"></select>
             <select id="yearSelect" onchange="renderDashboard()"></select>
         </div>
 
-        <div id="calendarGrid" class="grid"></div>
+        <div id="calendarGrid"></div>
     </div>
 
     <script>
@@ -81,9 +96,7 @@
 
         async function initApp() {
             try {
-                const response = await fetch(API_URL, {
-                    headers: { 'X-Master-Key': API_KEY }
-                });
+                const response = await fetch(API_URL, { headers: { 'X-Master-Key': API_KEY } });
                 if (response.ok) {
                     const json = await response.json();
                     data = json.record;
@@ -103,10 +116,7 @@
             try {
                 await fetch(API_URL, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': API_KEY
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
                     body: JSON.stringify(data)
                 });
             } catch (error) {
@@ -130,7 +140,6 @@
 
             data.habits.forEach(habit => {
                 const isDone = data.completions[habit.id]?.includes(today);
-                
                 const div = document.createElement('div');
                 div.className = 'habit-row';
                 div.innerHTML = `
@@ -181,29 +190,62 @@
             const currentYear = new Date().getFullYear();
             yearSelect.innerHTML = `<option value="${currentYear}">${currentYear}</option><option value="${currentYear-1}">${currentYear-1}</option>`;
 
+            toggleDashboardLayout();
+        }
+
+        function toggleDashboardLayout() {
+            const viewType = document.getElementById('viewType').value;
+            const monthFilters = document.getElementById('monthFilters');
+            
+            if (viewType === 'month') monthFilters.classList.remove('hidden');
+            else monthFilters.classList.add('hidden');
+            
             renderDashboard();
         }
 
         function renderDashboard() {
             const habitId = document.getElementById('habitSelect').value;
-            const month = parseInt(document.getElementById('monthSelect').value);
-            const year = parseInt(document.getElementById('yearSelect').value);
+            const viewType = document.getElementById('viewType').value;
             const grid = document.getElementById('calendarGrid');
             grid.innerHTML = '';
 
             if (!habitId) return;
-
-            const daysInMonth = new Date(year, month, 0).getDate();
             const completions = data.completions[habitId] || [];
 
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                const isDone = completions.includes(dateStr);
+            if (viewType === 'month') {
+                grid.className = 'grid-month';
+                const month = parseInt(document.getElementById('monthSelect').value);
+                const year = parseInt(document.getElementById('yearSelect').value);
+                const daysInMonth = new Date(year, month, 0).getDate();
+
+                for (let i = 1; i <= daysInMonth; i++) {
+                    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                    const isDone = completions.includes(dateStr);
+                    const square = document.createElement('div');
+                    square.className = `day-square ${isDone ? 'active' : ''}`;
+                    square.innerText = i;
+                    grid.appendChild(square);
+                }
+            } else {
+                grid.className = 'grid-heatmap';
+                const days = [];
+                const d = new Date();
+                d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
                 
-                const square = document.createElement('div');
-                square.className = `day-square ${isDone ? 'active' : ''}`;
-                square.innerText = i;
-                grid.appendChild(square);
+                // Generar últimos 98 días (14 semanas * 7 días)
+                for (let i = 97; i >= 0; i--) {
+                    const temp = new Date(d);
+                    temp.setDate(temp.getDate() - i);
+                    days.push(temp.toISOString().slice(0, 10));
+                }
+
+                days.forEach(dateStr => {
+                    const isDone = completions.includes(dateStr);
+                    const square = document.createElement('div');
+                    square.className = `heatmap-square ${isDone ? 'active' : ''}`;
+                    square.title = dateStr; // Muestra la fecha al mantener presionado / hacer hover
+                    grid.appendChild(square);
+                });
             }
         }
 
