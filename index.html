@@ -199,7 +199,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+        import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
         // CONFIGURACIÓN DE FIREBASE (Tuya)
@@ -257,7 +257,7 @@
 
         // FUNCIONES DE AUTENTICACIÓN
         async function iniciarSesion() {
-            try { await signInWithPopup(auth, provider); } 
+            try { await signInWithRedirect(auth, provider); } 
             catch (error) { console.error("Error Login:", error); }
         }
         
