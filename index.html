@@ -108,6 +108,34 @@
         .heatmap-square { width: 14px; height: 14px; border-radius: 4px; background: #2a2a2a; }
         .heatmap-square.active { background: var(--primary); }
         .heatmap-square.future { background: transparent; border: 1px dashed #333; box-sizing: border-box; }
+
+        /* Estilos para botones de navegación minimalistas */
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: none;
+            border: none;
+            color: #34C759;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 12px;
+            transition: opacity 0.2s;
+            outline: none;
+        }
+
+        .nav-btn:active {
+            opacity: 0.6;
+        }
+
+        .logout-btn {
+            color: #ff453a; /* Rojo para el botón de salir */
+        }
+
+        .nav-btn svg {
+            display: block; /* Evita espacios extra debajo del icono */
+        }
     </style>
 </head>
 <body>
@@ -155,8 +183,23 @@
         <div class="header-row">
             <h2 id="dateHeader">Hoy</h2>
             <div class="header-actions">
-                <button class="icon-btn" onclick="toggleView('dashboardView')">📊</button>
-                <button class="icon-btn" onclick="cerrarSesion()" style="background: transparent; color: var(--gray);">🚪</button>
+                <button class="nav-btn" onclick="toggleView('dashboardView')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Resumen</span>
+                </button>
+                <button class="nav-btn logout-btn" onclick="cerrarSesion()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff453a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    <span>Salir</span>
+                </button>
             </div>
         </div>
         
@@ -197,7 +240,6 @@
         </div>
     </div>
 
-#agregar aqui
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
         import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
