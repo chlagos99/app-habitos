@@ -81,12 +81,54 @@
         .heatmap-square.active { background: var(--primary); }
         .heatmap-square.future { background: transparent; border: 1px dashed #333; box-sizing: border-box; }
         
-        #loader { text-align: center; color: var(--gray); margin-top: 20px; font-size: 14px; }
+
+        /* Splash Screen Premium (Estilo App Nativa) */
+        #splashScreen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--bg); z-index: 9999; display: flex; flex-direction: column; 
+            align-items: center; justify-content: space-between; padding: 100px 20px 60px 20px; box-sizing: border-box;
+            transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1), transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        #splashScreen.fade-out { opacity: 0; transform: scale(1.05); pointer-events: none; }
+        
+        .brand-container { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
+        .brand-logo { 
+            width: 80px; height: 80px; background: var(--primary); color: white; 
+            font-size: 40px; font-weight: bold; border-radius: 22px; 
+            display: flex; align-items: center; justify-content: center; margin-bottom: 20px; 
+            box-shadow: 0 8px 32px rgba(52, 199, 89, 0.25); 
+            animation: pulse 2s infinite ease-in-out; 
+        }
+        .brand-name { font-size: 28px; font-weight: 700; color: white; margin: 0; letter-spacing: 0.5px; }
+        
+        @keyframes pulse { 
+            0% { transform: scale(1); box-shadow: 0 8px 32px rgba(52, 199, 89, 0.25); } 
+            50% { transform: scale(1.05); box-shadow: 0 12px 40px rgba(52, 199, 89, 0.4); } 
+            100% { transform: scale(1); box-shadow: 0 8px 32px rgba(52, 199, 89, 0.25); } 
+        }
+
+        .progress-wrapper { width: 100%; max-width: 250px; display: flex; flex-direction: column; align-items: center; }
+        .progress-container { width: 100%; height: 4px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+        #progressFill { width: 0%; height: 100%; background: var(--primary); transition: width 0.4s ease, background-color 0.3s ease; }
+        .loading-text { color: var(--gray); font-size: 11px; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
+
     </style>
 </head>
 <body>
 
-    <div id="loader">Cargando datos en la nube...</div>
+    <div id="splashScreen">
+        <div class="brand-container">
+            <div class="brand-logo">✓</div>
+            <h1 class="brand-name">Hábitos</h1>
+        </div>
+        
+        <div class="progress-wrapper">
+            <div class="progress-container">
+                <div id="progressFill"></div>
+            </div>
+            <div class="loading-text">Sincronizando...</div>
+        </div>
+    </div>
 
     <div id="editModal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -170,19 +212,32 @@
         const today = getLocalToday();
 
         async function initApp() {
+            const fill = document.getElementById('progressFill');
+            fill.style.width = "30%"; // Simula conexión inicial
+            
             try {
                 const response = await fetch(API_URL, { headers: { 'X-Master-Key': API_KEY } });
+                fill.style.width = "70%"; // Petición respondida
+                
                 if (response.ok) {
                     const json = await response.json();
                     data = json.record;
+                    fill.style.width = "100%"; // Datos procesados
                 }
-            } catch (error) { console.error("Error GET:", error); } 
-            finally {
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('mainView').classList.remove('hidden');
-                renderMain();
+            } catch (error) { 
+                console.error("Error GET:", error);
+                fill.style.backgroundColor = "#ff453a"; // Color rojo si falla
+            } finally {
+                setTimeout(() => {
+                    const splash = document.getElementById('splashScreen');
+                    splash.classList.add('fade-out');
+                    setTimeout(() => splash.remove(), 600); // Liberar DOM
+                    
+                    document.getElementById('mainView').classList.remove('hidden');
+                    renderMain();
+                }, 400); // Delay visual para que el usuario vea la barra al 100%
             }
-        }
+        }        
 
         async function saveData() {
             if (isSyncing) return;
