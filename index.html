@@ -287,8 +287,16 @@
         
         async function cerrarSesion() {
             if(confirm("¿Seguro que deseas salir?")) {
-                await signOut(auth);
-                window.location.reload();
+                try {
+                    await signOut(auth);
+                    // Limpia storage local para evitar bucles de estado
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    // Redirige a la raíz limpia
+                    window.location.href = "/";
+                } catch (error) {
+                    console.error("Error al salir:", error);
+                }
             }
         }
 
