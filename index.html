@@ -205,12 +205,13 @@
 
         // CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
-        apiKey: "AIzaSyBVg6aLGD4sHQ85Pup_soUIrcjzZKnx6w8",
-        authDomain: "app-habitos-8a146.firebaseapp.com",
-        projectId: "app-habitos-8a146",
-        storageBucket: "app-habitos-8a146.firebasestorage.app",
-        messagingSenderId: "258984410226",
-        appId: "1:258984410226:web:ccb26c8831fba88c7ad6eb"
+            apiKey: "AIzaSyBVg6aLGD4sHQ85Pup_soUIrcjzZKnx6w8",
+            // CAMBIA ESTO: Usa .web.app en lugar de .firebaseapp.com
+            authDomain: "app-habitos-8a146.web.app", 
+            projectId: "app-habitos-8a146",
+            storageBucket: "app-habitos-8a146.firebasestorage.app",
+            messagingSenderId: "258984410226",
+            appId: "1:258984410226:web:ccb26c8831fba88c7ad6eb"
         };
 
         const app = initializeApp(firebaseConfig);
