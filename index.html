@@ -7,12 +7,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Hábitos">
     <link rel="manifest" href="manifest.json">
-    <title>Tracker V5 - Pro Heatmap</title>
+    <title>Tracker V6 - Gestión</title>
     <style>
         :root { --bg: #121212; --surface: #1e1e1e; --primary: #34C759; --text: #fff; --gray: #888; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; padding-bottom: 80px; }
         h2 { margin-top: 10px; }
         .hidden { display: none !important; }
+        
+        /* Header y Controles */
+        .header-row { display: flex; justify-content: space-between; align-items: center; }
+        .icon-btn { background: none; border: none; color: var(--gray); font-size: 20px; cursor: pointer; padding: 8px; border-radius: 8px; }
+        .icon-btn:hover { background: #333; color: white; }
+        .icon-btn.danger:hover { color: #ff4444; }
+        .edit-controls { display: flex; gap: 4px; }
         
         .habit-row { display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 16px 20px; border-radius: 12px; margin-bottom: 12px; }
         .habit-name { font-size: 18px; font-weight: 500; }
@@ -22,9 +29,9 @@
         
         .input-group { display: flex; gap: 10px; margin-top: 20px; }
         input[type="text"] { flex: 1; padding: 14px; border-radius: 10px; border: none; background: var(--surface); color: white; font-size: 16px; }
-        button { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-secondary { background: #333; width: 100%; margin-top: 20px; }
+        button.btn-primary { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        button.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: #333; color: white; border: none; padding: 14px 20px; border-radius: 10px; font-size: 16px; font-weight: 600; width: 100%; margin-top: 20px; cursor: pointer;}
         
         .filters { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
         select { flex: 1; padding: 12px; border-radius: 8px; background: var(--surface); color: white; border: 1px solid #333; font-size: 16px; min-width: 100px; }
@@ -44,9 +51,8 @@
         .heatmap-grid { display: flex; gap: 4px; }
         .heatmap-col { display: flex; flex-direction: column; gap: 4px; position: relative; }
         
-        /* Línea separadora de mes */
         .heatmap-col.month-separator::before {
-            content: ''; position: absolute; left: -2.5px; top: 0; bottom: 0; width: 1px; background: #555;
+            content: ''; position: absolute; left: -2.5px; top: 0; bottom: 0; width: 0.5px; background: rgba(255, 255, 255, 0.15);
         }
         
         .heatmap-square { width: 16px; height: 16px; border-radius: 4px; background: #333; }
@@ -61,12 +67,15 @@
     <div id="loader">Cargando datos...</div>
 
     <div id="mainView" class="hidden">
-        <h2 id="dateHeader">Hoy</h2>
+        <div class="header-row">
+            <h2 id="dateHeader">Hoy</h2>
+            <button class="icon-btn" id="editModeBtn" onclick="toggleEditMode()">⚙️</button>
+        </div>
         <div id="habitList"></div>
 
         <div class="input-group">
             <input type="text" id="newHabit" placeholder="Nuevo hábito...">
-            <button id="addBtn" onclick="addHabit()">Añadir</button>
+            <button class="btn-primary" id="addBtn" onclick="addHabit()">Añadir</button>
         </div>
 
         <button class="btn-secondary" onclick="toggleView('dashboardView')">Ver Resumen</button>
@@ -99,6 +108,7 @@
         const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
         let data = { habits: [], completions: {} };
         let isSyncing = false;
+        let isEditMode = false;
 
         const getLocalToday = () => {
             const d = new Date();
@@ -142,19 +152,71 @@
             if(viewId === 'dashboardView') initDashboard();
         }
 
+        // --- GESTIÓN DE HÁBITOS ---
+        
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            document.getElementById('editModeBtn').innerText = isEditMode ? '✅' : '⚙️';
+            renderMain();
+        }
+
+        async function moveHabit(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= data.habits.length) return;
+            
+            const temp = data.habits[index];
+            data.habits[index] = data.habits[newIndex];
+            data.habits[newIndex] = temp;
+            
+            renderMain();
+            await saveData();
+        }
+
+        async function editHabitName(id) {
+            const habit = data.habits.find(h => h.id === id);
+            const newName = prompt("Editar nombre del hábito:", habit.name);
+            if (newName !== null && newName.trim() !== "") {
+                habit.name = newName.trim();
+                renderMain();
+                await saveData();
+            }
+        }
+
+        async function deleteHabit(id) {
+            if (confirm("¿Estás seguro de eliminar este hábito y todo su historial?")) {
+                data.habits = data.habits.filter(h => h.id !== id);
+                delete data.completions[id];
+                renderMain();
+                await saveData();
+            }
+        }
+
         function renderMain() {
             document.getElementById('dateHeader').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
             const list = document.getElementById('habitList');
             list.innerHTML = '';
 
-            data.habits.forEach(habit => {
+            data.habits.forEach((habit, index) => {
                 const isDone = data.completions[habit.id]?.includes(today);
                 const div = document.createElement('div');
                 div.className = 'habit-row';
-                div.innerHTML = `
-                    <span class="habit-name">${habit.name}</span>
-                    <div class="checkbox ${isDone ? 'checked' : ''}" onclick="toggleHabit('${habit.id}')"></div>
-                `;
+                
+                if (isEditMode) {
+                    div.innerHTML = `
+                        <span class="habit-name">${habit.name}</span>
+                        <div class="edit-controls">
+                            <button class="icon-btn" onclick="moveHabit(${index}, -1)" ${index === 0 ? 'style="opacity:0.2; cursor:default"' : ''}>↑</button>
+                            <button class="icon-btn" onclick="moveHabit(${index}, 1)" ${index === data.habits.length - 1 ? 'style="opacity:0.2; cursor:default"' : ''}>↓</button>
+                            <button class="icon-btn" onclick="editHabitName('${habit.id}')">✏️</button>
+                            <button class="icon-btn danger" onclick="deleteHabit('${habit.id}')">🗑️</button>
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <span class="habit-name">${habit.name}</span>
+                        <div class="checkbox ${isDone ? 'checked' : ''}" onclick="toggleHabit('${habit.id}')"></div>
+                    `;
+                }
                 list.appendChild(div);
             });
         }
@@ -250,15 +312,11 @@
                 const monthsContainer = document.getElementById('heatmapMonths');
                 const colsContainer = document.getElementById('heatmapColumns');
 
-                // Lógica de alineación por semanas
                 const tzOffset = (new Date()).getTimezoneOffset() * 60000;
                 const localNow = new Date(Date.now() - tzOffset);
-                
-                // Buscar el lunes de hace 14 semanas
                 const daysToMonday = (localNow.getDay() + 6) % 7;
                 const startMonday = new Date(localNow);
                 startMonday.setDate(localNow.getDate() - daysToMonday - (17 * 7));
-
                 const todayStr = localNow.toISOString().slice(0, 10);
 
                 for (let w = 0; w < 18; w++) {
@@ -271,7 +329,6 @@
                         cellDate.setDate(startMonday.getDate() + (w * 7) + d);
                         const dateStr = cellDate.toISOString().slice(0, 10);
                         
-                        // Detectar primer día del mes para la línea y la etiqueta
                         if (cellDate.getDate() === 1 || (w === 0 && d === 0)) {
                             isNewMonth = true;
                             monthName = cellDate.toLocaleString('es-ES', { month: 'short' });
@@ -293,7 +350,6 @@
                         const label = document.createElement('div');
                         label.className = 'heatmap-month-label';
                         label.innerText = monthName;
-                        // Cada columna mide 16px + 4px de gap = 20px
                         label.style.left = (w * 20) + 'px';
                         monthsContainer.appendChild(label);
                     }
