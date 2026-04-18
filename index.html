@@ -200,23 +200,29 @@
 #agregar aqui
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-        import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
         // CONFIGURACIÓN DE FIREBASE
         const firebaseConfig = {
-            apiKey: "AIzaSyBVg6aLGD4shQ85Pup_soUIrcjzZKnx6w8",
-            authDomain: "app-habitos-8a146.firebaseapp.com",
-            projectId: "app-habitos-8a146",
-            storageBucket: "app-habitos-8a146.firebasestorage.app",
-            messagingSenderId: "258984410226",
-            appId: "1:258984410226:web:ccb26c8831fba88c7ad6eb"
+        apiKey: "AIzaSyBVg6aLGD4sHQ85Pup_soUIrcjzZKnx6w8",
+        authDomain: "app-habitos-8a146.firebaseapp.com",
+        projectId: "app-habitos-8a146",
+        storageBucket: "app-habitos-8a146.firebasestorage.app",
+        messagingSenderId: "258984410226",
+        appId: "1:258984410226:web:ccb26c8831fba88c7ad6eb"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
+
+        // Capturar el resultado de la redirección al cargar la página
+        getRedirectResult(auth).catch((error) => {
+            console.error("Error en redirección:", error.code);
+            alert("Error de autenticación: " + error.message);
+        });
 
         let currentUser = null;
         let data = { habits: [], completions: {} };
@@ -241,13 +247,19 @@
                 currentUser = user;
                 loadingUI.classList.remove('hidden');
                 loginBtn.classList.add('hidden');
-                loadingText.innerText = "Sincronizando tus datos...";
+                loadingText.innerText = "Sincronizando...";
                 fill.style.width = "40%";
                 await loadUserData();
             } else {
                 currentUser = null;
                 loadingUI.classList.add('hidden');
                 loginBtn.classList.remove('hidden');
+                // Reset visual del botón por si falló la cookie
+                loginBtn.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Ingresar con Google`;
+                loginBtn.style.opacity = "1";
+                loginBtn.style.pointerEvents = "auto";
             }
         });
 
@@ -257,7 +269,13 @@
                 loadingBtn();
                 await signInWithRedirect(auth, provider); 
             } 
-            catch (error) { console.error("Error Login:", error); }
+            catch (error) { 
+                console.error("Error Login:", error); 
+                alert("Bloqueo detectado: " + error.message); // <-- Esto nos mostrará el problema real
+                loginBtn.innerHTML = "Ingresar con Google"; // Reiniciamos el botón
+                loginBtn.style.opacity = "1";
+                loginBtn.style.pointerEvents = "auto";
+            }
         }
 
         function loadingBtn() {
