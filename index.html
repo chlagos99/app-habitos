@@ -68,12 +68,27 @@
         .checkbox.checked::after { content: '✓'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; }
         
         /* Modal Detalle */
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(5px); }
-        .modal-content { background: var(--surface); width: 100%; max-width: 400px; padding: 24px; border-radius: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .modal-content h3 { margin: 0; color: white; font-size: 20px;}
-        .modal-content input { padding: 14px; border-radius: 10px; border: 1px solid #333; background: var(--bg); color: white; font-size: 16px; margin-bottom: 5px; }
+        .modal-overlay { 
+            position: fixed; inset: 0; 
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); 
+            display: grid; place-items: center; 
+            z-index: 1000; padding: 20px; box-sizing: border-box;
+        }
+
+        .modal-overlay.hidden { display: none !important; }
+
+        .modal-content {
+            background: var(--surface, #1b1b1b); /*color de letras calendario*/color: rgb(241, 241, 241); 
+            padding: 24px; border-radius: 16px;
+            width: 100%; max-width: 400px; 
+            box-sizing: border-box; margin: 0;
+            max-height: 85vh; overflow-y: auto; 
+        }
+
+        .modal-content h3 { margin: 0; color: rgb(0, 0, 0); font-size: 20px;} /*fondo de items*/ 
+        .modal-content input { padding: 14px; border-radius: 10px; border: 1px solid #333; background: var(--bg); color: rgb(255, 0, 0); font-size: 16px; margin-bottom: 5px; }
         
-        .modal-subtitle { color: var(--gray); font-size: 14px; margin-top: 5px; font-weight: 500;}
+        .modal-subtitle { color: rgb(0, 0, 0); font-size: 14px; margin-top: 5px; font-weight: 500;}
         .past-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 10px; }
         .past-day-cell { background: #333; border-radius: 8px; padding: 8px 0; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; transition: 0.2s;}
         .past-day-cell.active { background: var(--primary); color: white; }
@@ -141,9 +156,39 @@
         .nav-btn svg {
             display: block; /* Evita espacios extra debajo del icono */
         }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: #cecece; padding: 24px; border-radius: 16px;
+            width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .minimal-list {
+            margin: 16px 0; padding-left: 20px; color: #555; line-height: 1.6;
+        }
+        .input-group {
+            display: flex; gap: 8px; margin-bottom: 16px;
+        }
+        .minimal-select {
+            padding: 8px; border: 1px solid #eee; border-radius: 8px;
+            background: #f9f9f9; color: #333; outline: none; font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
+
+    <div id="changelogModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>🚀 Novedades de la versión</h3>
+            <ul id="changelogList" class="minimal-list">
+                <li>Nuevas categorías para agrupar hábitos.</li>
+                <li>Selector de grupo al crear un hábito.</li>
+            </ul>
+            <button class="nav-btn" onclick="cerrarChangelog()">Entendido</button>
+        </div>
+    </div>
 
     <div id="splashScreen">
         <div class="brand-container">
@@ -167,22 +212,32 @@
 
     <div id="editModal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3>Detalle del Hábito</h3>
-            <input type="hidden" id="editHabitId">
-            <input type="text" id="editHabitName" placeholder="Nombre del hábito">
+            <h3 style="margin-top:0; margin-bottom: 20px;">Editar Hábito</h3>
             
-            <div class="modal-subtitle">Últimos 14 días (Toca para marcar):</div>
+            <input type="hidden" id="editHabitId">
+            
+            <div class="modal-subtitle">Nombre</div>
+            <input type="text" id="editHabitName" placeholder="Nombre del hábito" style="width: 100%; box-sizing: border-box; margin-bottom: 15px;">
+            
+            <div class="modal-subtitle">Grupo</div>
+            <select id="editHabitGroup" style="width: 100%; box-sizing: border-box; padding: 14px; background: var(--bg, #121212); color: white; border: 1px solid #333; border-radius: 10px; margin-bottom: 20px; font-size: 16px;">
+                <option value="General">General</option>
+                <option value="Salud">Salud</option>
+                <option value="Estudios">Estudios</option>
+                <option value="Trabajo">Trabajo</option>
+            </select>
+
+            <div class="modal-subtitle">Historial de 14 días</div>
             <div id="modalPastDays" class="past-days-grid"></div>
 
-            <div class="modal-row">
-                <button class="btn-modal" onclick="moveHabitFromModal(-1)">⬆️ Subir</button>
-                <button class="btn-modal" onclick="moveHabitFromModal(1)">⬇️ Bajar</button>
+            <div class="modal-row" style="margin-top: 20px;">
+                <button class="btn-modal" onclick="document.getElementById('editModal').classList.add('hidden')">Cancelar</button>
+                <button class="btn-modal save" onclick="saveEdit()">Guardar</button>
             </div>
-            
-            <button class="btn-modal save" onclick="saveEdit()">Cerrar y Guardar</button>
-            <button class="btn-modal delete" onclick="deleteFromModal()">Eliminar Hábito</button>
+            <button class="btn-modal delete" style="width: 100%; margin-top: 10px;" onclick="deleteFromModal()">Eliminar Hábito</button>
         </div>
     </div>
+
 
     <div id="mainView" class="hidden">
         <div class="header-row">
@@ -212,8 +267,13 @@
 
         <div class="input-group">
             <input type="text" id="newHabit" placeholder="Nuevo hábito...">
-            <button class="btn-primary" id="addBtn" onclick="addHabit()">Añadir</button>
+            <select id="grupoHabito" class="minimal-select" style="width: 110px;">
+                <option value="General">General</option>
+            </select>
+            <button onclick="addHabit()">+</button>
         </div>
+
+
     </div>
 
     <div id="dashboardView" class="hidden">
@@ -223,6 +283,11 @@
         </div>
         
         <select id="habitSelect" onchange="renderDashboard()"></select>
+
+        <div class="dashboard-card">
+            <h3 class="card-title">Progreso del día por Grupos</h3>
+            <div id="groupSummaryContainer"></div>
+        </div>
 
         <div class="dashboard-card">
             <h3 class="card-title">Últimas 18 Semanas</h3>
@@ -242,6 +307,17 @@
                 <div class="day-label">J</div><div class="day-label">V</div><div class="day-label">S</div><div class="day-label">D</div>
             </div>
             <div id="calendarGrid" class="grid-month"></div>
+        </div>
+    </div>
+
+    <div id="changelogModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 style="color: #ffffff;">🚀 Novedades de la versión</h3>
+            <ul id="changelogList" class="minimal-list" style="color: #cccccc;">
+                <li>Nuevas categorías para agrupar hábitos.</li>
+                <li>Selector de grupo al crear un hábito.</li>
+            </ul>
+            <button class="nav-btn" onclick="cerrarChangelog()">Entendido</button>
         </div>
     </div>
 
@@ -276,6 +352,34 @@
         let data = { habits: [], completions: {} };
         let isSyncing = false;
         let dragSourceIndex = null;
+
+
+        // LOGICA CHANGELOG
+        const APP_VERSION = "v1.2"; 
+
+        // Nueva función para actualizar las opciones de autocompletado de grupos
+        function updateGroupList() {
+            const select = document.getElementById('grupoHabito');
+            if(!select) return;
+            
+            const gruposBase = ['General', 'Salud', 'Estudios', 'Trabajo'];
+            const gruposUsuario = data.habits.map(h => h.grupo || 'General');
+            const gruposUnicos = [...new Set([...gruposBase, ...gruposUsuario])];
+            
+            select.innerHTML = gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
+        }
+        function verificarActualizacion() {
+            if (localStorage.getItem("appVersion") !== APP_VERSION) {
+                document.getElementById("changelogModal").style.display = "flex";
+                localStorage.setItem("appVersion", APP_VERSION);
+            }
+        }
+
+        function cerrarChangelog() {
+            document.getElementById("changelogModal").style.display = "none";
+        }
+
+        window.addEventListener('load', verificarActualizacion);
         
         const getLocalToday = () => {
             const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -408,11 +512,17 @@
         function openModal(id) {
             const habit = data.habits.find(h => h.id === id);
             if(!habit) return;
+            
             document.getElementById('editHabitId').value = habit.id;
             document.getElementById('editHabitName').value = habit.name;
+            
+            const groupSelect = document.getElementById('editHabitGroup');
+            if (groupSelect) groupSelect.value = habit.grupo || "General";
+
             renderModalDays(id);
             document.getElementById('editModal').classList.remove('hidden');
         }
+
 
         function renderModalDays(id) {
             const container = document.getElementById('modalPastDays'); container.innerHTML = '';
@@ -444,12 +554,21 @@
             renderModalDays(id); renderMain(); await saveData();
         }
 
+
         async function saveEdit() {
             const id = document.getElementById('editHabitId').value;
             const newName = document.getElementById('editHabitName').value.trim();
+            const newGroup = document.getElementById('editHabitGroup').value;
+            
             if(!newName) return;
+            
             const habit = data.habits.find(h => h.id === id);
-            if(habit && habit.name !== newName) { habit.name = newName; renderMain(); await saveData(); }
+            if(habit) { 
+                habit.name = newName; 
+                habit.grupo = newGroup; // Guarda el grupo actualizado
+                renderMain(); 
+                await saveData(); 
+            }
             document.getElementById('editModal').classList.add('hidden');
         }
 
@@ -484,19 +603,37 @@
                 div.addEventListener('drop', (e) => handleDrop(e, index));
                 div.addEventListener('dragend', handleDragEnd);
 
+                // Se inyecta una etiqueta visual con el nombre del grupo
                 div.innerHTML = `
                     <div class="habit-name-container" onclick="openModal('${habit.id}')">
-                        <span class="drag-handle">≡</span><span class="habit-name">${habit.name}</span>
+                        <span class="drag-handle">≡</span>
+                        <span class="habit-name">
+                            ${habit.name} 
+                            <small style="color: #888; font-size: 0.75rem; margin-left: 8px; background: #eee; padding: 2px 6px; border-radius: 4px;">${habit.grupo || 'General'}</small>
+                        </span>
                     </div>
                     <div class="checkbox ${isDone ? 'checked' : ''}" onclick="toggleHabit('${habit.id}')"></div>`;
                 list.appendChild(div);
             });
+            updateGroupList(); // Refresca el autocompletado en cada renderizado
         }
 
         async function addHabit() {
-            const input = document.getElementById('newHabit'); const name = input.value.trim(); if (!name) return;
-            const id = 'h_' + Date.now(); data.habits.push({ id, name }); data.completions[id] = [];
-            input.value = ''; renderMain(); await saveData();
+            const input = document.getElementById('newHabit'); 
+            const selectGrupo = document.getElementById('grupoHabito'); 
+            const name = input.value.trim(); 
+            
+            if (!name) return;
+
+            const grupo = selectGrupo.value || 'General'; 
+            const id = 'h_' + Date.now(); 
+            
+            data.habits.push({ id, name, grupo }); 
+            data.completions[id] = [];
+            
+            input.value = ''; 
+            renderMain(); 
+            await saveData();
         }
 
         async function toggleHabit(id) {
@@ -504,6 +641,37 @@
             const index = data.completions[id].indexOf(today);
             if (index > -1) data.completions[id].splice(index, 1); else data.completions[id].push(today);
             renderMain(); await saveData();
+        }
+
+        function renderGroupSummary() {
+            const container = document.getElementById('groupSummaryContainer');
+            if(!container) return;
+
+            const grupos = data.habits.reduce((acc, hab) => {
+                const g = hab.grupo || 'General';
+                if (!acc[g]) acc[g] = { total: 0, completados: 0 };
+                acc[g].total++;
+                if (data.completions[hab.id]?.includes(today)) {
+                    acc[g].completados++;
+                }
+                return acc;
+            }, {});
+
+            let html = '';
+            for (const [grupo, stats] of Object.entries(grupos)) {
+                const porcentaje = stats.total === 0 ? 0 : Math.round((stats.completados / stats.total) * 100);
+                html += `
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px;">
+                        <span style="font-weight: 500;">${grupo}</span>
+                        <span style="color: var(--gray);">${stats.completados}/${stats.total} (${porcentaje}%)</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${porcentaje}%; height: 100%; background: var(--primary); transition: width 0.4s ease;"></div>
+                    </div>
+                </div>`;
+            }
+            container.innerHTML = html || '<div style="color: #888; font-size: 14px;">No hay hábitos.</div>';
         }
 
         function initDashboard() {
@@ -514,7 +682,9 @@
             monthSelect.innerHTML = months.map((m, i) => `<option value="${i+1}" ${new Date().getMonth() === i ? 'selected' : ''}>${m}</option>`).join('');
             const yearSelect = document.getElementById('yearSelect'); const currentYear = new Date().getFullYear();
             yearSelect.innerHTML = `<option value="${currentYear}">${currentYear}</option><option value="${currentYear-1}">${currentYear-1}</option>`;
+            
             renderDashboard();
+            renderGroupSummary(); // Ejecuta la visualización agrupada
         }
 
         function renderDashboard() {
@@ -576,6 +746,7 @@
         window.toggleHabit = toggleHabit;
         window.addHabit = addHabit;
         window.renderDashboard = renderDashboard;
+        window.cerrarChangelog = cerrarChangelog;
     </script>
 
     <script>
