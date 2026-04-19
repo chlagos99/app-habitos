@@ -59,11 +59,14 @@ function cerrarChangelog() {
     document.getElementById("changelogModal").style.display = "none";
 }
 
-const getLocalToday = () => {
-    const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 10);
+const toLocalISO = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
-const today = getLocalToday();
+const today = toLocalISO(new Date());
+
 
 const fill = document.getElementById('progressFill');
 const loadingUI = document.getElementById('loadingUI');
@@ -197,14 +200,17 @@ function openModal(id) {
 function renderModalDays(id) {
     const container = document.getElementById('modalPastDays'); container.innerHTML = '';
     const completions = data.completions[id] || [];
-    const tzOffset = (new Date()).getTimezoneOffset() * 60000;
-    const localNow = new Date(Date.now() - tzOffset);
     
+    const now = new Date();
     const days = [];
-    for (let i = 13; i >= 0; i--) { const temp = new Date(localNow); temp.setDate(temp.getDate() - i); days.push(temp); }
+    for (let i = 13; i >= 0; i--) { 
+        const temp = new Date(now); 
+        temp.setDate(now.getDate() - i); 
+        days.push(temp); 
+    }
 
     days.forEach(dateObj => {
-        const dateStr = dateObj.toISOString().slice(0, 10);
+        const dateStr = toLocalISO(dateObj);
         const isDone = completions.includes(dateStr);
         const dayName = dateObj.toLocaleDateString('es-ES', { weekday: 'short' }).charAt(0);
         const dayNum = dateObj.getDate();
@@ -216,6 +222,7 @@ function renderModalDays(id) {
         container.appendChild(cell);
     });
 }
+
 
 async function togglePastDayFromModal(id, dateStr) {
     if (!data.completions[id]) data.completions[id] = [];
@@ -373,6 +380,7 @@ function initDashboard() {
     renderGroupSummary(); 
 }
 
+
 function renderDashboard() {
     const groupSelect = document.getElementById('groupSelect');
     const habitSelect = document.getElementById('habitSelect');
@@ -408,18 +416,28 @@ function renderDashboard() {
                 <div class="heatmap-grid" id="heatmapColumns"></div>
             </div>
         </div>`;
-    const monthsContainer = document.getElementById('heatmapMonths'); const colsContainer = document.getElementById('heatmapColumns');
-    const tzOffset = (new Date()).getTimezoneOffset() * 60000; const localNow = new Date(Date.now() - tzOffset);
-    const daysToMonday = (localNow.getDay() + 6) % 7; const startMonday = new Date(localNow); startMonday.setDate(localNow.getDate() - daysToMonday - (17 * 7));
-    const todayStr = localNow.toISOString().slice(0, 10);
+    const monthsContainer = document.getElementById('heatmapMonths'); 
+    const colsContainer = document.getElementById('heatmapColumns');
+    
+    const now = new Date();
+    const todayStr = toLocalISO(now);
+
+    const daysToMonday = (now.getDay() + 6) % 7; 
+    const startMonday = new Date(now); 
+    startMonday.setDate(now.getDate() - daysToMonday - (17 * 7));
 
     for (let w = 0; w < 18; w++) {
         const col = document.createElement('div'); col.className = 'heatmap-col';
         let isNewMonth = false; let monthName = '';
         for (let d = 0; d < 7; d++) {
-            const cellDate = new Date(startMonday); cellDate.setDate(startMonday.getDate() + (w * 7) + d);
-            const dateStr = cellDate.toISOString().slice(0, 10);
-            if (cellDate.getDate() === 1 || (w === 0 && d === 0)) { isNewMonth = true; monthName = cellDate.toLocaleString('es-ES', { month: 'short' }); }
+            const cellDate = new Date(startMonday); 
+            cellDate.setDate(startMonday.getDate() + (w * 7) + d);
+            const dateStr = toLocalISO(cellDate);
+            
+            if (cellDate.getDate() === 1 || (w === 0 && d === 0)) { 
+                isNewMonth = true; 
+                monthName = cellDate.toLocaleString('es-ES', { month: 'short' }); 
+            }
             
             const isFuture = dateStr > todayStr; 
             const ratio = getDayCompletionRatio(dateStr);
@@ -462,6 +480,7 @@ function renderDashboard() {
         calContainer.appendChild(square);
     }
 }
+
 
 window.iniciarSesion = iniciarSesion;
 window.cerrarSesion = cerrarSesion;
