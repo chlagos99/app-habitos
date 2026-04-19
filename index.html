@@ -185,6 +185,7 @@
             <ul id="changelogList" class="minimal-list">
                 <li>Nuevas categorías para agrupar hábitos.</li>
                 <li>Selector de grupo al crear un hábito.</li>
+                <li>Nuevas visualizaciones del dashboard resumen.</li>
             </ul>
             <button class="nav-btn" onclick="cerrarChangelog()">Entendido</button>
         </div>
@@ -282,7 +283,10 @@
             <button class="icon-btn" onclick="toggleView('mainView')">✕</button>
         </div>
         
-        <select id="habitSelect" onchange="renderDashboard()"></select>
+        <div class="mini-selects" style="margin-bottom: 20px;">
+            <select id="groupSelect" onchange="updateDashboardHabits()" style="flex: 1;"></select>
+            <select id="habitSelect" onchange="renderDashboard()" style="flex: 1;"></select>
+        </div>
 
         <div class="dashboard-card">
             <h3 class="card-title">Progreso del día por Grupos</h3>
@@ -355,7 +359,7 @@
 
 
         // LOGICA CHANGELOG
-        const APP_VERSION = "v1.2"; 
+        const APP_VERSION = "v1.3"; 
 
         // Nueva función para actualizar las opciones de autocompletado de grupos
         function updateGroupList() {
@@ -674,22 +678,70 @@
             container.innerHTML = html || '<div style="color: #888; font-size: 14px;">No hay hábitos.</div>';
         }
 
-        function initDashboard() {
+        function updateDashboardHabits() {
+            const groupSelect = document.getElementById('groupSelect');
             const habitSelect = document.getElementById('habitSelect');
-            habitSelect.innerHTML = data.habits.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+            const selectedGroup = groupSelect.value;
+
+            // Filtramos los hábitos que pertenecen al grupo seleccionado
+            const habitosDelGrupo = data.habits.filter(h => (h.grupo || 'General') === selectedGroup);
+            
+            // Construimos las opciones (Primero "Todos", luego los individuales)
+            let html = `<option value="todos">Todos (${habitosDelGrupo.length})</option>`;
+            html += habitosDelGrupo.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+            
+            habitSelect.innerHTML = html;
+            renderDashboard(); // Renderizamos con la nueva selección
+        }
+
+        function initDashboard() {
+            // 1. Cargar grupos únicos
+            const groupSelect = document.getElementById('groupSelect');
+            const gruposUsuario = data.habits.map(h => h.grupo || 'General');
+            const gruposUnicos = [...new Set(gruposUsuario)];
+            if (gruposUnicos.length === 0) gruposUnicos.push('General'); // Fallback si está vacío
+            groupSelect.innerHTML = gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
+
+            // 2. Cargar meses y años
             const monthSelect = document.getElementById('monthSelect');
             const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
             monthSelect.innerHTML = months.map((m, i) => `<option value="${i+1}" ${new Date().getMonth() === i ? 'selected' : ''}>${m}</option>`).join('');
             const yearSelect = document.getElementById('yearSelect'); const currentYear = new Date().getFullYear();
             yearSelect.innerHTML = `<option value="${currentYear}">${currentYear}</option><option value="${currentYear-1}">${currentYear-1}</option>`;
             
-            renderDashboard();
-            renderGroupSummary(); // Ejecuta la visualización agrupada
+            updateDashboardHabits(); // Inicializa los hábitos del primer grupo y renderiza
+            renderGroupSummary(); 
         }
 
         function renderDashboard() {
-            const habitId = document.getElementById('habitSelect').value; if (!habitId) return;
-            const completions = data.completions[habitId] || [];
+            const groupSelect = document.getElementById('groupSelect');
+            const habitSelect = document.getElementById('habitSelect');
+            if (!groupSelect || !habitSelect) return;
+            
+            const selectedGroup = groupSelect.value;
+            const habitId = habitSelect.value;
+            
+            // Determinar qué hábitos vamos a procesar
+            let habitosAVisualizar = [];
+            if (habitId === 'todos') {
+                habitosAVisualizar = data.habits.filter(h => (h.grupo || 'General') === selectedGroup);
+            } else {
+                habitosAVisualizar = data.habits.filter(h => h.id === habitId);
+            }
+
+            const totalHabits = habitosAVisualizar.length;
+
+            // Función para calcular la intensidad de color del día (0 a 1)
+            const getDayCompletionRatio = (dateStr) => {
+                if (totalHabits === 0) return 0;
+                let completed = 0;
+                habitosAVisualizar.forEach(h => {
+                    if (data.completions[h.id] && data.completions[h.id].includes(dateStr)) completed++;
+                });
+                return completed / totalHabits;
+            };
+
+            // RENDER DEL HEATMAP
             const heatContainer = document.getElementById('heatmapContainer');
             heatContainer.innerHTML = `
                 <div class="heatmap-wrapper">
@@ -711,9 +763,18 @@
                     const cellDate = new Date(startMonday); cellDate.setDate(startMonday.getDate() + (w * 7) + d);
                     const dateStr = cellDate.toISOString().slice(0, 10);
                     if (cellDate.getDate() === 1 || (w === 0 && d === 0)) { isNewMonth = true; monthName = cellDate.toLocaleString('es-ES', { month: 'short' }); }
-                    const isFuture = dateStr > todayStr; const isDone = completions.includes(dateStr);
-                    const square = document.createElement('div'); square.className = `heatmap-square ${isDone ? 'active' : ''} ${isFuture ? 'future' : ''}`;
-                    square.title = dateStr; col.appendChild(square);
+                    
+                    const isFuture = dateStr > todayStr; 
+                    const ratio = getDayCompletionRatio(dateStr);
+                    
+                    const square = document.createElement('div'); 
+                    square.className = 'heatmap-square';
+                    if (isFuture) {
+                        square.classList.add('future');
+                    } else if (ratio > 0) {
+                        square.style.backgroundColor = `rgba(52, 199, 89, ${ratio})`; // Intensidad dinámica
+                    }
+                    col.appendChild(square);
                 }
                 colsContainer.appendChild(col);
                 if (isNewMonth) {
@@ -722,14 +783,26 @@
                 }
             }
 
+            // RENDER DEL CALENDARIO
             const calContainer = document.getElementById('calendarGrid'); calContainer.innerHTML = '';
             const month = parseInt(document.getElementById('monthSelect').value), year = parseInt(document.getElementById('yearSelect').value);
             const daysInMonth = new Date(year, month, 0).getDate(); const firstDayIndex = (new Date(year, month - 1, 1).getDay() + 6) % 7; 
             for(let blank = 0; blank < firstDayIndex; blank++) calContainer.appendChild(document.createElement('div'));
+            
             for (let i = 1; i <= daysInMonth; i++) {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                const isDone = completions.includes(dateStr);
-                const square = document.createElement('div'); square.className = `day-square ${isDone ? 'active' : ''}`; square.innerText = i;
+                const ratio = getDayCompletionRatio(dateStr);
+                const isFuture = dateStr > todayStr;
+                
+                const square = document.createElement('div'); 
+                square.className = 'day-square';
+                square.innerText = i;
+                
+                if (!isFuture && ratio > 0) {
+                    square.style.backgroundColor = `rgba(52, 199, 89, ${ratio})`;
+                    square.style.color = ratio > 0.4 ? '#fff' : '#aaa'; // Asegura que el número se lea bien
+                    if (ratio === 1) square.style.fontWeight = 'bold';
+                }
                 calContainer.appendChild(square);
             }
         }
@@ -747,6 +820,8 @@
         window.addHabit = addHabit;
         window.renderDashboard = renderDashboard;
         window.cerrarChangelog = cerrarChangelog;
+        window.updateDashboardHabits = updateDashboardHabits;
+    
     </script>
 
     <script>
