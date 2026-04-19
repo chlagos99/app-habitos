@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, enableMultiTabIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBVg6aLGD4sHQ85Pup_soUIrcjzZKnx6w8",
@@ -14,6 +14,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+// Activar persistencia offline
+enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    if (err.code == 'failed-precondition') {
+        console.warn('Persistencia: Múltiples pestañas abiertas. Funciona solo en una.');
+    } else if (err.code == 'unimplemented') {
+        console.warn('Persistencia: El navegador no soporta IndexedDB.');
+    }
+});
 const provider = new GoogleAuthProvider();
 
 getRedirectResult(auth).catch((error) => {
